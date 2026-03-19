@@ -3,10 +3,12 @@
 #include <map>
 #include <unordered_map>
 #include <list>
+#include <cstdint>
 
 //=================================================
 //=================================================
 
+using Price = std::uint64_t;
 using OrderID = std::size_t;
 enum class OrderType {ASK, BID};
 
@@ -19,7 +21,7 @@ private:
 // Additional data structures
     struct Order
     {
-        double m_price; // the price corresponding to the given order
+        Price m_price; // the price corresponding to the given order
         std::size_t m_volume; // volume of a product for the given order
         OrderType m_type; // ASK/BID (see OrderType enum)
     };
@@ -34,10 +36,13 @@ private:
     using OrderIter = std::list<Order>::iterator;
 
 // Fields
-    std::map<double, PriceLevel, std::greater<double>> m_bids;
-    std::map<double, PriceLevel, std::less<double>> m_asks;
+    std::map<Price, PriceLevel, std::greater<Price>> m_bids;
+    std::map<Price, PriceLevel, std::less<Price>> m_asks;
     std::unordered_map<OrderID, OrderIter> m_orderIterators;
 
+// Methods
+    Price double_to_price(double val) const noexcept;
+    double price_to_double(Price val) const noexcept;
 
 public:
     OrderBook() = default;

@@ -1,5 +1,7 @@
 #include "orderbook.h"
 
+#include <cmath>
+
 //=================================================
 //=================================================
 
@@ -48,6 +50,20 @@ double OrderBook::best_ask() const
 std::size_t OrderBook::volume_at_price(double price) const
 {
 
+}
+
+//=================================================
+
+Price OrderBook::double_to_price(double val) const noexcept
+{
+    return static_cast<Price>(std::round(val * 1e4));
+}
+
+//=================================================
+
+double OrderBook::price_to_double(Price val) const noexcept
+{
+    return static_cast<double>(val) / 1e4;
 }
 
 //=================================================
