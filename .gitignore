@@ -1,0 +1,11 @@
+*~
+*.a
+*.autosave
+**/*build*/
+*.dll
+*.lib
+*.o
+*.obj
+*.so
+*.user
+
