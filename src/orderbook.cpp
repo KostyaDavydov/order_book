@@ -124,7 +124,10 @@ std::size_t OrderBook::volume_at_price(double price) const
 
 Price OrderBook::double_to_price(double val) const noexcept
 {
-    return static_cast<Price>(std::round(val * 1e4));
+    if (val < 0)
+        return static_cast<Price>(0);
+    else
+        return static_cast<Price>(std::round(val * 1e4));
 }
 
 //=================================================
