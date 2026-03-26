@@ -74,7 +74,7 @@ void OrderBook::delete_order(OrderID id)
 
     if (orderToDelete_MapIter != m_orderIterators.end()) // if the order was found
     {
-        // Extract the iterator to the list element
+        // Get the iterator to the list element
         auto orderToDelete_ListIter = orderToDelete_MapIter->second;
 
         // Define the type (side) of the order and remove the element from the corresponding map
@@ -113,7 +113,39 @@ void OrderBook::delete_order(OrderID id)
 
 void OrderBook::modify_order(OrderID id, double newPrice, std::size_t newVolume)
 {
+    // Validate input
+    if (newPrice <= 0.0 || newVolume == 0)
+        return;
 
+    // Search the order with the given id (get the unordered map iterator)
+    auto orderToModify_MapIter = m_orderIterators.find(id);
+
+    if (orderToModify_MapIter != m_orderIterators.end()) // if the order was found
+    {
+        // Get the corresponding order
+        Order orderToModify = *(orderToModify_MapIter->second);
+
+        if (orderToModify.m_price != double_to_price(newPrice)) // if the price was modified
+        {
+            delete_order(id);
+            add_order(id, newPrice, newVolume, orderToModify.m_type);
+        }
+        else // otherwise it's enough to change only the total volume for the price level
+        {
+            // Convertion to `long` is used to handle negative values
+            switch (orderToModify.m_type)
+            {
+            case OrderType::ASK:
+                orderToModify_MapIter->second->m_volume = newVolume;
+                m_asks[orderToModify.m_price].m_volume += (long(newVolume) - orderToModify.m_volume);
+                break;
+            case OrderType::BID:
+                orderToModify_MapIter->second->m_volume = newVolume;
+                m_bids[orderToModify.m_price].m_volume += (long(newVolume) - orderToModify.m_volume);
+                break;
+            }
+        }
+    }
 }
 
 //=================================================

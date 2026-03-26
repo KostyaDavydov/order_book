@@ -42,6 +42,38 @@ protected:
         book->add_order(6, 99.0 , 20, OrderType::BID);
     }
 
+    // Helper method to add many mixed orders
+    void addManyMixedOrders() {
+        // After the whole addition process we have 10 price levels (10.0, 20.0, ..., 100.0).
+        // The orders with prices <= 50.0 are BIDS, others are ASKS.
+        // On each price level we have 5 orders with volumes 1, 2, ..., 5 (so the total volume
+        // on each level is 15).
+        // -------------------------------
+        // |VOLUME(BID)|PRICE|VOLUME(ASK)|
+        // -------------------------------
+        // |           |100.0|    15     |
+        // |           | 90.0|    15     |
+        // |           | 80.0|    15     |
+        // |           | 70.0|    15     |
+        // |           | 60.0|    15     |
+        // |    15     | 50.0|           |
+        // |    15     | 40.0|           |
+        // |    15     | 30.0|           |
+        // |    15     | 20.0|           |
+        // |    15     | 10.0|           |
+        // -------------------------------
+
+        OrderID id = 1;
+        for (double price = 10.0; price <= 100.0; price += 10.0)
+        {
+            for (int j = 1; j <= 5; ++j)
+            {
+                book->add_order(id, price, j, price <= 50 ? OrderType::BID : OrderType::ASK);
+                ++id;
+            }
+        }
+    }
+
     OrderBook * book;
 };
 
@@ -182,3 +214,81 @@ TEST_F(OrderBookTest, AddManyDeleteMany)
     EXPECT_EQ(book->volume_at_price(99.0), 0);
     EXPECT_EQ(book->volume_at_price(99.5), 15);
  }
+
+//=================================================
+// Test 9: Adding some asks and modifying some of them (volume only)
+//=================================================
+TEST_F(OrderBookTest, AddAsksModifyVolumeOnly)
+{
+    // Act
+    addAskOrders();
+
+    book->modify_order(1, 100.0, 20);
+    book->modify_order(2, 101.5, 2);
+
+    // Assert
+    EXPECT_NEAR(book->best_ask(), 100.0, PRICE_ACCURACY);
+    EXPECT_EQ(book->volume_at_price(100.0), 28);
+    EXPECT_EQ(book->volume_at_price(101.5), 2);
+}
+
+//=================================================
+// Test 10: Adding some bids and modifying some of them (price and volume)
+//=================================================
+TEST_F(OrderBookTest, AddBidsModifyPriceAndVolume)
+{
+    // Act
+    addBidOrders();
+
+    book->modify_order(4, 100.0, 20);
+    book->modify_order(5, 97.0, 10);
+
+    // Assert
+    EXPECT_NEAR(book->best_bid(), 100.0, PRICE_ACCURACY);
+    EXPECT_EQ(book->volume_at_price(100.0), 20);
+    EXPECT_EQ(book->volume_at_price(99.5), 10);
+    EXPECT_EQ(book->volume_at_price(98.0), 0);
+    EXPECT_EQ(book->volume_at_price(97.0), 10);
+}
+
+//=================================================
+// Test 11: Adding many orders, deleting, and modifying some of them
+//=================================================
+TEST_F(OrderBookTest, AddManyDeleteModifySome)
+{
+    // Act
+    addManyMixedOrders();
+
+    // Modify the whole first price level (10.0 -> 55.0) so the
+    // orders become on the highest BID level in the order book
+    book->modify_order(1, 55.0, 1);
+    book->modify_order(2, 55.0, 2);
+    book->modify_order(3, 55.0, 3);
+    book->modify_order(4, 55.0, 4);
+    book->modify_order(5, 55.0, 5);
+
+    // Delete part of the BIDS from the 50.0 price level
+    book->delete_order(22); // volume -2
+    book->delete_order(23); // volume -3
+    book->delete_order(24); // volume -4
+
+    // Delete all the ASKS from the 60.0 price level
+    book->delete_order(26);
+    book->delete_order(27);
+    book->delete_order(28);
+    book->delete_order(29);
+    book->delete_order(30);
+
+    // Modify part of the ASKS on the 70.0 price level
+    book->modify_order(31, 80.0, 1);
+    book->modify_order(32, 80.0, 2);
+
+    // Assert
+    EXPECT_NEAR(book->best_bid(), 55.0, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_ask(), 70.0, PRICE_ACCURACY);
+    EXPECT_EQ(book->volume_at_price(10.0), 0);
+    EXPECT_EQ(book->volume_at_price(50.0), 6);
+    EXPECT_EQ(book->volume_at_price(60.0), 0);
+    EXPECT_EQ(book->volume_at_price(70.0), 12);
+    EXPECT_EQ(book->volume_at_price(80.0), 18);
+}
