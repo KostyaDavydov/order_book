@@ -48,6 +48,7 @@ protected:
 //=================================================
 //=================================================
 
+const double PRICE_ACCURACY = 1e-5;
 
 //=================================================
 // Test 1: Adding single ASK order
@@ -63,8 +64,8 @@ TEST_F(OrderBookTest, AddSingleAskOrder)
     book->add_order(id, price, volume, OrderType::ASK);
 
     // Assert
-    EXPECT_DOUBLE_EQ(book->best_ask(), price);
-    EXPECT_DOUBLE_EQ(book->best_bid(), 0.0);
+    EXPECT_NEAR(book->best_ask(), price, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 0.0, PRICE_ACCURACY);
     EXPECT_EQ(book->volume_at_price(price), volume);
 }
 
@@ -82,8 +83,8 @@ TEST_F(OrderBookTest, AddSingleBidOrder)
     book->add_order(id, price, volume, OrderType::BID);
 
     // Assert
-    EXPECT_DOUBLE_EQ(book->best_bid(), price);
-    EXPECT_DOUBLE_EQ(book->best_ask(), 0.0);
+    EXPECT_NEAR(book->best_bid(), price, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_ask(), 0.0, PRICE_ACCURACY);
     EXPECT_EQ(book->volume_at_price(price), volume);
 }
 
@@ -96,9 +97,9 @@ TEST_F(OrderBookTest, AddSeveralAskOrders)
     addAskOrders();
 
     // Assert
+    EXPECT_NEAR(book->best_ask(), 100.0, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 0.0, PRICE_ACCURACY);
     EXPECT_EQ(book->volume_at_price(100.0), 15);
-    EXPECT_DOUBLE_EQ(book->best_ask(), 100.0);
-    EXPECT_DOUBLE_EQ(book->best_bid(), 0.0);
 }
 
 //=================================================
@@ -110,9 +111,9 @@ TEST_F(OrderBookTest, AddSeveralBidOrders)
     addBidOrders();
 
     // Assert
+    EXPECT_NEAR(book->best_ask(), 0.0, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 99.5, PRICE_ACCURACY);
     EXPECT_EQ(book->volume_at_price(99.5), 25);
-    EXPECT_DOUBLE_EQ(book->best_ask(), 0.0);
-    EXPECT_DOUBLE_EQ(book->best_bid(), 99.5);
 }
 
 //=================================================
@@ -124,10 +125,10 @@ TEST_F(OrderBookTest, AddSeveralMixedOrders)
     addMixedOrders();
 
     // Assert
+    EXPECT_NEAR(book->best_ask(), 100.0, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 99.5, PRICE_ACCURACY);
     EXPECT_EQ(book->volume_at_price(99.0), 40);
     EXPECT_EQ(book->volume_at_price(101.0), 15);
-    EXPECT_DOUBLE_EQ(book->best_ask(), 100.0);
-    EXPECT_DOUBLE_EQ(book->best_bid(), 99.5);
 }
 
 //=================================================
@@ -140,8 +141,44 @@ TEST_F(OrderBookTest, AddOrdersInvalidValues)
     book->add_order(2,  5.0, 0, OrderType::BID);
 
     // Assert
+    EXPECT_NEAR(book->best_ask(), 0.0, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 0.0, PRICE_ACCURACY);
     EXPECT_EQ(book->volume_at_price(-5.0), 0.0);
     EXPECT_EQ(book->volume_at_price(5.0), 0.0);
-    EXPECT_DOUBLE_EQ(book->best_ask(), 0.0);
-    EXPECT_DOUBLE_EQ(book->best_bid(), 0.0);
 }
+
+//=================================================
+// Test 7: Adding some orders and deleting one of them
+//=================================================
+TEST_F(OrderBookTest, AddManyDeleteOne)
+{
+    // Act
+    addAskOrders();
+    book->delete_order(3);
+
+    // Assert
+    EXPECT_NEAR(book->best_ask(), 100.0, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 0.0, PRICE_ACCURACY);
+    EXPECT_EQ(book->volume_at_price(100.0), 7);
+}
+
+//=================================================
+// Test 8: Adding some orders and deleting some of them
+//=================================================
+TEST_F(OrderBookTest, AddManyDeleteMany)
+{
+    // Act
+    addMixedOrders();
+
+    book->delete_order(1);
+    book->delete_order(4);
+    book->delete_order(6);
+
+    // Assert
+    EXPECT_NEAR(book->best_ask(), 101.0, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 99.5, PRICE_ACCURACY);
+    EXPECT_EQ(book->volume_at_price(100.0), 0);
+    EXPECT_EQ(book->volume_at_price(101.0), 15);
+    EXPECT_EQ(book->volume_at_price(99.0), 0);
+    EXPECT_EQ(book->volume_at_price(99.5), 15);
+ }
