@@ -11,9 +11,12 @@ void OrderBook::add_order(OrderID id, double price, std::size_t volume, OrderTyp
     if (price <= 0.0 || volume == 0)
         return;
 
+    // Convert the price to the integer representation
+    Price intPrice = double_to_price(price);
+
     // Create a new order object
     Order newOrder {
-        double_to_price(price),
+        intPrice,
         volume,
         type
     };
@@ -23,39 +26,41 @@ void OrderBook::add_order(OrderID id, double price, std::size_t volume, OrderTyp
     {
     case OrderType::ASK:
     {
-        auto priceLvlIter = m_asks.find(newOrder.m_price); // search the order with the given price
+        auto priceLvlIter = m_asks.find(intPrice); // search the order with the given price
         if (priceLvlIter == m_asks.end()) // if there is no order with that price in the map
         {
             // Create a new PriceLevel object
-            m_asks[newOrder.m_price] = PriceLevel { newOrder.m_volume,
-                                                    {std::move(newOrder)}
-                                                  };
+            m_asks[intPrice] = PriceLevel { volume,
+                                            {std::move(newOrder)}
+                                          };
+            m_orderIterators[id] = m_asks[intPrice].m_orders.begin(); // create a reference (iterator) to the order
         }
         else // otherwise there are added orders with that price in the map
         {
-            priceLvlIter->second.m_volume += newOrder.m_volume; // update the total volume
+            priceLvlIter->second.m_volume += volume; // update the total volume
             priceLvlIter->second.m_orders.push_front(std::move(newOrder)); // insert the new order at the beginning
+            m_orderIterators[id] = priceLvlIter->second.m_orders.begin(); // create a reference (iterator) to the order
         }
-        m_orderIterators[id] = priceLvlIter->second.m_orders.begin(); // create a reference (iterator) to the order
-        break;
+        return;
     }
     case OrderType::BID:
     {
-        auto priceLvlIter = m_bids.find(newOrder.m_price); // search the order with the given price
+        auto priceLvlIter = m_bids.find(intPrice); // search the order with the given price
         if (priceLvlIter == m_bids.end()) // if there is no order with that price in the map
         {
             // Create a new PriceLevel object
-            m_bids[newOrder.m_price] = PriceLevel { newOrder.m_volume,
-                                                    {std::move(newOrder)}
-                                                  };
+            m_bids[intPrice] = PriceLevel { volume,
+                                            {std::move(newOrder)}
+                                          };
+            m_orderIterators[id] = m_bids[intPrice].m_orders.begin(); // create a reference (iterator) to the order
         }
         else // otherwise there are added orders with that price in the map
         {
-            priceLvlIter->second.m_volume += newOrder.m_volume; // update the total volume
+            priceLvlIter->second.m_volume += volume; // update the total volume
             priceLvlIter->second.m_orders.push_front(std::move(newOrder)); // insert the new order at the beginning
+            m_orderIterators[id] = priceLvlIter->second.m_orders.begin(); // create a reference (iterator) to the order
         }
-        m_orderIterators[id] = priceLvlIter->second.m_orders.begin(); // create a reference (iterator) to the order
-        break;
+        return;
     }
     }
 }
@@ -64,7 +69,44 @@ void OrderBook::add_order(OrderID id, double price, std::size_t volume, OrderTyp
 
 void OrderBook::delete_order(OrderID id)
 {
+    // Search the order with the given id (get the unordered map iterator)
+    auto orderToDelete_MapIter = m_orderIterators.find(id);
 
+    if (orderToDelete_MapIter != m_orderIterators.end()) // if the order was found
+    {
+        // Extract the iterator to the list element
+        auto orderToDelete_ListIter = orderToDelete_MapIter->second;
+
+        // Define the type (side) of the order and remove the element from the corresponding map
+        switch(orderToDelete_ListIter->m_type)
+        {
+        case OrderType::ASK:
+        {
+            Price currPrice = orderToDelete_ListIter->m_price;
+            auto & currPriceLevel = m_asks[currPrice];
+
+            currPriceLevel.m_volume -= orderToDelete_ListIter->m_volume;
+            currPriceLevel.m_orders.erase(orderToDelete_ListIter);
+
+            if (currPriceLevel.m_orders.empty())
+                m_asks.erase(currPrice);
+            break;
+        }
+        case OrderType::BID:
+        {
+            Price currPrice = orderToDelete_ListIter->m_price;
+            auto & currPriceLevel = m_bids[currPrice];
+
+            currPriceLevel.m_volume -= orderToDelete_ListIter->m_volume;
+            currPriceLevel.m_orders.erase(orderToDelete_ListIter);
+
+            if (currPriceLevel.m_orders.empty())
+                m_bids.erase(currPrice);
+            break;
+        }
+        }
+        m_orderIterators.extract(id);
+    }
 }
 
 //=================================================
