@@ -292,3 +292,81 @@ TEST_F(OrderBookTest, AddManyDeleteModifySome)
     EXPECT_EQ(book->volume_at_price(70.0), 12);
     EXPECT_EQ(book->volume_at_price(80.0), 18);
 }
+
+//=================================================
+// Test 12: Adding several ASK orders, executing one of them
+//=================================================
+TEST_F(OrderBookTest, AddAsksExecOne)
+{
+    // Act
+    addAskOrders();
+
+    book->execute_order(2, 4);
+
+    // Assert
+    EXPECT_NEAR(book->best_ask(), 100.0, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 0.0, PRICE_ACCURACY);
+    EXPECT_EQ(book->volume_at_price(100.0), 15);
+    EXPECT_EQ(book->volume_at_price(101.5), 1);
+}
+
+//=================================================
+// Test 13: Adding several ASK orders, try to execute invalid volume
+//=================================================
+TEST_F(OrderBookTest, AddAsksInvalidExec)
+{
+    // Act
+    addAskOrders();
+
+    book->execute_order(1, 8);
+
+    EXPECT_EQ(book->volume_at_price(100.0), 15);
+}
+
+//=================================================
+// Test 14: Adding some orders and executing some of them
+//=================================================
+TEST_F(OrderBookTest, AddMixedExecSome)
+{
+    // Act
+    addMixedOrders();
+
+    book->execute_order(1);
+    book->execute_order(4, 20);
+
+    // Assert
+    EXPECT_NEAR(book->best_ask(), 101.0, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 99.5, PRICE_ACCURACY);
+    EXPECT_EQ(book->volume_at_price(100.0), 0);
+    EXPECT_EQ(book->volume_at_price(99.0), 20);
+}
+
+//=================================================
+// Test 15: Adding many orders, executing some of them
+//=================================================
+TEST_F(OrderBookTest, AddManyExecuteSome)
+{
+    // Act
+    addManyMixedOrders();
+
+    // Execute some orders from the first price level (10.0)
+    book->execute_order(3, 2); // 2 from 3
+    book->execute_order(4); // 4 from 4
+
+    // Execute all BIDS from their heighest level
+    book->execute_order(21);
+    book->execute_order(22);
+    book->execute_order(23);
+    book->execute_order(24);
+    book->execute_order(25);
+
+    // Execute some orders from 80.0 price level
+    book->execute_order(40, 5);
+
+    // Assert
+    EXPECT_NEAR(book->best_ask(), 60.0, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 40.0, PRICE_ACCURACY);
+    EXPECT_EQ(book->volume_at_price(10.0), 9);
+    EXPECT_EQ(book->volume_at_price(50.0), 0);
+    EXPECT_EQ(book->volume_at_price(80.0), 10);
+}

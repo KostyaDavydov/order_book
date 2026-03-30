@@ -152,7 +152,21 @@ void OrderBook::modify_order(OrderID id, double newPrice, std::size_t newVolume)
 
 void OrderBook::execute_order(OrderID id, std::size_t execVolume)
 {
+    // Search the order with the given id (get the unordered map iterator)
+    auto orderToModify_MapIter = m_orderIterators.find(id);
 
+    if (orderToModify_MapIter != m_orderIterators.end()) // if the order was found
+    {
+        // Get the corresponding order
+        Order orderToExec = *(orderToModify_MapIter->second);
+
+        if (execVolume == orderToExec.m_volume || execVolume == 0)
+            delete_order(id); // delete the order from the book
+        else if (execVolume < orderToExec.m_volume)
+            modify_order(id, price_to_double(orderToExec.m_price), orderToExec.m_volume - execVolume); // just change the volume
+        else
+            return; // not a valid value
+    }
 }
 
 //=================================================
