@@ -5,6 +5,7 @@ project(OrderBook_Proj)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(MAIN_EXEC_FILENAME main_exe)
 set(TEST_EXEC_FILENAME test_exe)
+set(GUI_EXEC_FILENAME  gui_exe)
 
 add_executable(${MAIN_EXEC_FILENAME}
                    "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp"
@@ -29,3 +30,5 @@ target_link_libraries(${TEST_EXEC_FILENAME} PRIVATE GTest::GTest GTest::Main)
 target_include_directories(${TEST_EXEC_FILENAME}
                                PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include"
                                        "${GTEST_INCLUDE_DIRS}")
+
+add_subdirectory(gui)
