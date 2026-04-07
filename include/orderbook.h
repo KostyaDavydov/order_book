@@ -23,6 +23,7 @@ private:
 // Additional data structures
     struct Order
     {
+        OrderID m_id; // id of the order
         Price m_price; // the price corresponding to the given order
         std::size_t m_volume; // volume of a product for the given order
         OrderType m_type; // ASK/BID (see OrderType enum)
@@ -65,6 +66,10 @@ public:
 
     // Execute (maybe partially: then the execVolume is given) the order with the given id
     void execute_order(OrderID id, std::size_t execVolume = 0);
+
+    // Try to execute the given volume from the given
+    // side (type) and return the actually executed volume
+    std::size_t execute(OrderType type, std::size_t execVolume);
 
     // Get the best (lowest) bid price
     double best_bid() const;

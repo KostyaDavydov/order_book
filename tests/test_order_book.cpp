@@ -34,6 +34,15 @@ protected:
 
     // Helper method to add mixed orders
     void addMixedOrders() {
+        // -------------------------------
+        // |VOLUME(BID)|PRICE|VOLUME(ASK)|
+        // -------------------------------
+        // |           |101.0|    15     |
+        // |           |100.0|    10     |
+        // |    15     | 99.5|           |
+        // |    40     | 99.0|           |
+        // -------------------------------
+
         book->add_order(1, 100.0, 10, OrderType::ASK);
         book->add_order(2, 99.5 , 15, OrderType::BID);
         book->add_order(3, 101.0,  5, OrderType::ASK);
@@ -435,4 +444,162 @@ TEST_F(OrderBookTest, AddMixedGetLevels)
     EXPECT_NEAR(bid_priceLvls[1].first, 99.0, PRICE_ACCURACY);
     EXPECT_EQ(bid_priceLvls[0].second, 15);
     EXPECT_EQ(bid_priceLvls[1].second, 40);
+}
+
+//=================================================
+// Test 19: Adding mixed orders and partially executing a single level on both sides
+//=================================================
+TEST_F(OrderBookTest, AddMixedExecSingleLvlPartly)
+{
+    // Act
+    addMixedOrders();
+
+    auto askExecuted = book->execute(OrderType::ASK, 5);
+    auto bidExecuted = book->execute(OrderType::BID, 5);
+
+    // Assert
+    // Verify actually executed volumes
+    EXPECT_EQ(askExecuted, 5);
+    EXPECT_EQ(bidExecuted, 5);
+
+    // The best ask/bid has to be the same
+    EXPECT_NEAR(book->best_ask(), 100.0, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 99.5, PRICE_ACCURACY);
+
+    // Verify volumes have changed correctly
+    EXPECT_EQ(book->volume_at_price(100.0), 5);
+    EXPECT_EQ(book->volume_at_price(99.5), 10);
+
+    // Verify volumes have not changed
+    EXPECT_EQ(book->volume_at_price(101.0), 15);
+    EXPECT_EQ(book->volume_at_price(99.0), 40);
+}
+
+//=================================================
+// Test 20: Adding mixed orders and fully executing a single level on both sides
+//=================================================
+TEST_F(OrderBookTest, AddMixedExecSingleLvlFully)
+{
+    // Act
+    addMixedOrders();
+
+    auto askExecuted = book->execute(OrderType::ASK, 10);
+    auto bidExecuted = book->execute(OrderType::BID, 15);
+
+    // Assert
+    // Verify actually executed volumes
+    EXPECT_EQ(askExecuted, 10);
+    EXPECT_EQ(bidExecuted, 15);
+
+    // The best ask/bid has to be updated
+    EXPECT_NEAR(book->best_ask(), 101.0, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 99.0, PRICE_ACCURACY);
+
+    // Verify volumes have changed correctly
+    EXPECT_EQ(book->volume_at_price(100.0), 0);
+    EXPECT_EQ(book->volume_at_price(99.5), 0);
+
+    // Verify volumes have not changed
+    EXPECT_EQ(book->volume_at_price(101.0), 15);
+    EXPECT_EQ(book->volume_at_price(99.0), 40);
+}
+
+//=================================================
+// Test 21: Adding mixed orders and executing orders spanning two levels on both sides
+//=================================================
+TEST_F(OrderBookTest, AddMixedExecOrdersFromTwoLvls)
+{
+    // Act
+    addMixedOrders();
+
+    auto askExecuted = book->execute(OrderType::ASK, 20); // 101.0-level order count: 2->1
+    auto bidExecuted = book->execute(OrderType::BID, 20); //  99.0-level order count: 2->2 (doesn't change)
+
+    // Assert
+    // Verify actually executed volumes
+    EXPECT_EQ(askExecuted, 20);
+    EXPECT_EQ(bidExecuted, 20);
+
+    // The best ask/bid has to be updated
+    EXPECT_NEAR(book->best_ask(), 101.0, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 99.0, PRICE_ACCURACY);
+
+    // Verify volumes have changed correctly
+    EXPECT_EQ(book->volume_at_price(101.0), 5);
+    EXPECT_EQ(book->volume_at_price(99.0), 35);
+}
+
+//=================================================
+// Test 22: Adding mixed orders and executing all orders in the book
+//=================================================
+TEST_F(OrderBookTest, AddMixedExecAll)
+{
+    // Act
+    addMixedOrders();
+
+    auto askExecuted = book->execute(OrderType::ASK, 25);
+    auto bidExecuted = book->execute(OrderType::BID, 55);
+
+    // Assert
+    // Verify actually executed volumes
+    EXPECT_EQ(askExecuted, 25);
+    EXPECT_EQ(bidExecuted, 55);
+
+    // The best ask/bid has to be updated
+    EXPECT_NEAR(book->best_ask(), 0.0, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 0.0, PRICE_ACCURACY);
+
+    // There has to left no orders in the book
+    EXPECT_EQ(book->price_levels_for_type(OrderType::ASK).size(), 0);
+    EXPECT_EQ(book->price_levels_for_type(OrderType::BID).size(), 0);
+}
+
+//=================================================
+// Test 23: Adding mixed orders and trying to execute more than available in the book
+//=================================================
+TEST_F(OrderBookTest, AddMixedExecMoreThanAvail)
+{
+    // Act
+    addMixedOrders();
+
+    auto askExecuted = book->execute(OrderType::ASK, 100);
+    auto bidExecuted = book->execute(OrderType::BID, 100);
+
+    // Assert
+    // Verify actually executed volumes
+    EXPECT_EQ(askExecuted, 25);
+    EXPECT_EQ(bidExecuted, 55);
+
+    // The best ask/bid has to be updated
+    EXPECT_NEAR(book->best_ask(), 0.0, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 0.0, PRICE_ACCURACY);
+
+    // There has to left no orders in the book
+    EXPECT_EQ(book->price_levels_for_type(OrderType::ASK).size(), 0);
+    EXPECT_EQ(book->price_levels_for_type(OrderType::BID).size(), 0);
+}
+
+//=================================================
+// Test 24: Adding some ask orders, zero volume execution, and execution on an empty side (BID)
+//=================================================
+TEST_F(OrderBookTest, AddAsksExecZeroAndEmptySide)
+{
+    // Act
+    addAskOrders();
+
+    auto askExecuted = book->execute(OrderType::ASK, 0);
+    auto bidExecuted = book->execute(OrderType::BID, 1);
+
+    // Assert
+    // Verify actually executed volumes
+    EXPECT_EQ(askExecuted, 0);
+    EXPECT_EQ(bidExecuted, 0);
+
+    // Verify the best ask/bid
+    EXPECT_NEAR(book->best_ask(), 100.0, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 0.0, PRICE_ACCURACY);
+
+    // Verify volumes have not changed
+    EXPECT_EQ(book->volume_at_price(100.0), 15);
+    EXPECT_EQ(book->volume_at_price(101.5), 5);
 }

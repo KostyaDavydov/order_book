@@ -16,6 +16,7 @@ void OrderBook::add_order(OrderID id, double price, std::size_t volume, OrderTyp
 
     // Create a new order object
     Order newOrder {
+        id,
         intPrice,
         volume,
         type
@@ -166,6 +167,80 @@ void OrderBook::execute_order(OrderID id, std::size_t execVolume)
             modify_order(id, price_to_double(orderToExec.m_price), orderToExec.m_volume - execVolume); // just change the volume
         else
             return; // not a valid value
+    }
+}
+
+//=================================================
+
+std::size_t OrderBook::execute(OrderType type, std::size_t execVolume)
+{
+    // Validate input
+    if (execVolume == 0)
+        return 0;
+
+    // Remember the total volume we need to execute
+    auto needToExecute = execVolume;
+
+    switch (type)
+    {
+    case OrderType::ASK:
+    {
+        // If there aren't any asks in the map
+        if (m_asks.empty())
+            return 0; // nothing to execute
+
+        // Get the lowest price ask (`m_asks.begin()`) that was added to the book
+        // earlier than all the asks with that lowest price (`m_orders.back()`)
+        auto lowestAsk = m_asks.begin()->second.m_orders.back();
+
+        // While the volume of the current ask is less than the volume that is left to execute
+        while (lowestAsk.m_volume < execVolume)
+        {
+            execVolume -= lowestAsk.m_volume; // decrease the volume that is left to execute
+            execute_order(lowestAsk.m_id); // execute full order (2-nd parameter isn't set)
+
+            // If there aren't any asks in the map
+            if (m_asks.empty())
+                return needToExecute - execVolume; // return the actually executed volume
+
+            lowestAsk = m_asks.begin()->second.m_orders.back(); // get the next order
+        }
+
+        // Now we know that the volume to execute isn't greater than the volume
+        // of the current order
+        execute_order(lowestAsk.m_id, execVolume);
+
+        return needToExecute;
+    }
+    case OrderType::BID:
+    {
+        // If there aren't any bids in the map
+        if (m_bids.empty())
+            return 0; // nothing to execute
+
+        // Get the highest price bid (`m_bids.begin()`) that was added to the book
+        // earlier than all the bids with that highest price (`m_orders.back()`)
+        auto highestBid = m_bids.begin()->second.m_orders.back();
+
+        // While the volume of the current bid is less than the volume that is left to execute
+        while (highestBid.m_volume < execVolume)
+        {
+            execVolume -= highestBid.m_volume; // decrease the volume that is left to execute
+            execute_order(highestBid.m_id); // execute full order (2-nd parameter isn't set)
+
+            // If there aren't any bids in the map
+            if (m_bids.empty())
+                return needToExecute - execVolume; // return the actually executed volume
+
+            highestBid = m_bids.begin()->second.m_orders.back(); // get the next order
+        }
+
+        // Now we know that the volume to execute isn't greater than the volume
+        // of the current order
+        execute_order(highestBid.m_id, execVolume);
+
+        return needToExecute;
+    }
     }
 }
 
