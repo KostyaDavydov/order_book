@@ -4,12 +4,14 @@
 #include <unordered_map>
 #include <list>
 #include <cstdint>
+#include <vector>
 
 //=================================================
 //=================================================
 
 using Price = std::uint64_t;
 using OrderID = std::size_t;
+using PriceLevelsVector = std::vector<std::pair<double, std::size_t>>;
 enum class OrderType {ASK, BID};
 
 //=================================================
@@ -72,4 +74,7 @@ public:
 
     // Get the product volume at the given price
     std::size_t volume_at_price(double price) const;
+
+    // Get all price levels for the given orders type
+    PriceLevelsVector price_levels_for_type(OrderType type) const;
 };

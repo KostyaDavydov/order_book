@@ -226,3 +226,25 @@ double OrderBook::price_to_double(Price val) const noexcept
 }
 
 //=================================================
+
+PriceLevelsVector OrderBook::price_levels_for_type(OrderType type) const
+{
+    PriceLevelsVector levels;
+
+    switch (type)
+    {
+    case OrderType::ASK:
+        levels.reserve(m_asks.size());
+        for (const auto & level : m_asks)
+            levels.emplace_back(price_to_double(level.first), level.second.m_volume);
+        break;
+    case OrderType::BID:
+        levels.reserve(m_bids.size());
+        for (const auto & level : m_bids)
+            levels.emplace_back(price_to_double(level.first), level.second.m_volume);
+    }
+
+    return levels;
+}
+
+//=================================================

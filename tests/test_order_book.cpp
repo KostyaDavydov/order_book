@@ -370,3 +370,69 @@ TEST_F(OrderBookTest, AddManyExecuteSome)
     EXPECT_EQ(book->volume_at_price(50.0), 0);
     EXPECT_EQ(book->volume_at_price(80.0), 10);
 }
+
+//=================================================
+// Test 16: Adding ask orders and getting all price levels
+//=================================================
+TEST_F(OrderBookTest, AddAsksGetLevels)
+{
+    // Act
+    addAskOrders();
+
+    auto ask_priceLvls = book->price_levels_for_type(OrderType::ASK);
+    auto bid_priceLvls = book->price_levels_for_type(OrderType::BID);
+
+    // Assert
+    EXPECT_EQ(ask_priceLvls.size(), 2);
+    EXPECT_EQ(bid_priceLvls.size(), 0);
+    EXPECT_NEAR(ask_priceLvls[0].first, 100.0, PRICE_ACCURACY);
+    EXPECT_NEAR(ask_priceLvls[1].first, 101.5, PRICE_ACCURACY);
+    EXPECT_EQ(ask_priceLvls[0].second, 15);
+    EXPECT_EQ(ask_priceLvls[1].second, 5);
+}
+
+//=================================================
+// Test 17: Adding bid orders and getting all price levels
+//=================================================
+TEST_F(OrderBookTest, AddBidsGetLevels)
+{
+    // Act
+    addBidOrders();
+
+    auto ask_priceLvls = book->price_levels_for_type(OrderType::ASK);
+    auto bid_priceLvls = book->price_levels_for_type(OrderType::BID);
+
+    // Assert
+    EXPECT_EQ(ask_priceLvls.size(), 0);
+    EXPECT_EQ(bid_priceLvls.size(), 2);
+    EXPECT_NEAR(bid_priceLvls[0].first, 99.5, PRICE_ACCURACY);
+    EXPECT_NEAR(bid_priceLvls[1].first, 98.0, PRICE_ACCURACY);
+    EXPECT_EQ(bid_priceLvls[0].second, 25);
+    EXPECT_EQ(bid_priceLvls[1].second, 20);
+}
+
+//=================================================
+// Test 18: Adding mixed orders and getting all price levels
+//=================================================
+TEST_F(OrderBookTest, AddMixedGetLevels)
+{
+    // Act
+    addMixedOrders();
+
+    auto ask_priceLvls = book->price_levels_for_type(OrderType::ASK);
+    auto bid_priceLvls = book->price_levels_for_type(OrderType::BID);
+
+    // Assert
+    EXPECT_EQ(ask_priceLvls.size(), 2);
+    EXPECT_EQ(bid_priceLvls.size(), 2);
+
+    EXPECT_NEAR(ask_priceLvls[0].first, 100.0, PRICE_ACCURACY);
+    EXPECT_NEAR(ask_priceLvls[1].first, 101.0, PRICE_ACCURACY);
+    EXPECT_EQ(ask_priceLvls[0].second, 10);
+    EXPECT_EQ(ask_priceLvls[1].second, 15);
+
+    EXPECT_NEAR(bid_priceLvls[0].first, 99.5, PRICE_ACCURACY);
+    EXPECT_NEAR(bid_priceLvls[1].first, 99.0, PRICE_ACCURACY);
+    EXPECT_EQ(bid_priceLvls[0].second, 15);
+    EXPECT_EQ(bid_priceLvls[1].second, 40);
+}
