@@ -603,3 +603,142 @@ TEST_F(OrderBookTest, AddAsksExecZeroAndEmptySide)
     EXPECT_EQ(book->volume_at_price(100.0), 15);
     EXPECT_EQ(book->volume_at_price(101.5), 5);
 }
+
+//=================================================
+// Test 25: Adding mixed orders, trying to add another two that will be executed immediately
+//=================================================
+TEST_F(OrderBookTest, AddMixedAddImmediatelyExecuted)
+{
+    // Act
+    addMixedOrders();
+
+    book->add_order(7, 99.0, 5, OrderType::ASK);  // the price is less than the best bid has (immediate execution)
+    book->add_order(8, 100.5, 5, OrderType::BID); // the price is greater than the best ask has (immediate execution)
+
+    // Assert
+    // The best ask/bid has to be the same
+    EXPECT_NEAR(book->best_ask(), 100.0, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 99.5, PRICE_ACCURACY);
+
+    // Verify volumes have changed correctly
+    EXPECT_EQ(book->volume_at_price(100.0), 5);
+    EXPECT_EQ(book->volume_at_price(99.5), 10);
+
+    // Verify volumes have not changed
+    EXPECT_EQ(book->volume_at_price(101.0), 15);
+    EXPECT_EQ(book->volume_at_price(99.0), 40);
+    EXPECT_EQ(book->volume_at_price(100.5), 0);
+}
+
+//=================================================
+// Test 26: Adding mixed orders, trying to add another two that will be executed by full single level immediately
+//=================================================
+TEST_F(OrderBookTest, AddMixedAddImmedExecFullSingleLvl)
+{
+    // Act
+    addMixedOrders();
+
+    book->add_order(7, 99.0, 15, OrderType::ASK);  // the price is less than the best bid has (immediate execution)
+    book->add_order(8, 100.5, 10, OrderType::BID); // the price is greater than the best ask has (immediate execution)
+
+    // Assert
+    // The best ask/bid has to be updated
+    EXPECT_NEAR(book->best_ask(), 101.0, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 99.0, PRICE_ACCURACY);
+
+    // Verify volumes have changed correctly
+    EXPECT_EQ(book->volume_at_price(100.0), 0);
+    EXPECT_EQ(book->volume_at_price(99.5), 0);
+
+    // Verify volumes have not changed
+    EXPECT_EQ(book->volume_at_price(101.0), 15);
+    EXPECT_EQ(book->volume_at_price(99.0), 40);
+    EXPECT_EQ(book->volume_at_price(100.5), 0);
+}
+
+//=================================================
+// Test 27: Adding mixed orders, trying to add another two that will be executed by two levels immediately
+//=================================================
+TEST_F(OrderBookTest, AddMixedAddImmedExecTwoLvls)
+{
+    // Act
+    addMixedOrders();
+
+    book->add_order(7, 99.0, 30, OrderType::ASK);  // the price is less than the best bid has (immediate execution)
+    book->add_order(8, 102.0, 20, OrderType::BID); // the price is greater than the best ask has (immediate execution)
+
+    // Assert
+    // The best ask/bid has to be updated
+    EXPECT_NEAR(book->best_ask(), 101.0, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 99.0, PRICE_ACCURACY);
+
+    // Verify volumes have changed correctly
+    EXPECT_EQ(book->volume_at_price(101.0), 5);
+    EXPECT_EQ(book->volume_at_price(99.0), 25);
+
+    // Verify volumes have not changed
+    EXPECT_EQ(book->volume_at_price(102.0), 0);
+}
+
+//=================================================
+// Test 28: Adding mixed orders, trying to add another two that will be executed by all orders immediately
+//=================================================
+TEST_F(OrderBookTest, AddMixedAddImmedExecAll)
+{
+    // Act
+    addMixedOrders();
+
+    book->add_order(7, 99.0, 55, OrderType::ASK);  // the price is less than the best bid has (immediate execution)
+    book->add_order(8, 102.0, 25, OrderType::BID); // the price is greater than the best ask has (immediate execution)
+
+    // Assert
+    // The best ask/bid has to be updated
+    EXPECT_NEAR(book->best_ask(), 0.0, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 0.0, PRICE_ACCURACY);
+
+    // There has to left no orders in the book
+    EXPECT_EQ(book->price_levels_for_type(OrderType::ASK).size(), 0);
+    EXPECT_EQ(book->price_levels_for_type(OrderType::BID).size(), 0);
+}
+
+//=================================================
+// Test 29: Adding ask orders, trying to add another one that will be PARTIALLY executed by ALL orders immediately
+//=================================================
+TEST_F(OrderBookTest, AddMixedAddImmedExecAllPartly)
+{
+    // Act
+    addAskOrders();
+
+    book->add_order(4, 102.0, 30, OrderType::BID);  // the price is greater than the best ask has (immediate execution)
+
+
+    // The best bid has to be updated
+    EXPECT_NEAR(book->best_ask(), 0.0, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 102.0, PRICE_ACCURACY);
+
+    // Verify volumes have changed correctly
+    EXPECT_EQ(book->volume_at_price(100.0), 0);
+    EXPECT_EQ(book->volume_at_price(101.5), 0);
+    EXPECT_EQ(book->volume_at_price(102.0), 10);
+}
+
+//=================================================
+// Test 30: Adding ask orders, trying to add another one that will be executed by full single level immediately and then added
+//=================================================
+TEST_F(OrderBookTest, AddAsksAddImmedExecAll)
+{
+    // Act
+    addAskOrders();
+
+    book->add_order(4, 101.2, 30, OrderType::BID);  // the price is greater than the best ask has (immediate execution)
+
+    // Assert
+    // The best bid has to be updated
+    EXPECT_NEAR(book->best_ask(), 101.5, PRICE_ACCURACY);
+    EXPECT_NEAR(book->best_bid(), 101.2, PRICE_ACCURACY);
+
+    // Verify volumes have changed correctly
+    EXPECT_EQ(book->volume_at_price(100.0), 0);
+    EXPECT_EQ(book->volume_at_price(101.2), 15);
+    EXPECT_EQ(book->volume_at_price(101.5), 5);
+}

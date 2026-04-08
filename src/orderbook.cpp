@@ -30,8 +30,25 @@ void OrderBook::add_order(OrderID id, double price, std::size_t volume, OrderTyp
         auto priceLvlIter = m_asks.find(intPrice); // search the order with the given price
         if (priceLvlIter == m_asks.end()) // if there is no order with that price in the map
         {
+            // Execute new order against existing bids with price >= new order price.
+            // Add any remaining volume to the order book after matching
+            while (!m_bids.empty() && price <= best_bid())
+            {
+                auto volumeAtBestBid = volume_at_price(best_bid()); // take volume from the best bid price level
+                if (volumeAtBestBid < newOrder.m_volume) // if new order cannot be completely executed against bids with the highest price
+                {
+                    newOrder.m_volume -= volumeAtBestBid; // decrease the volume of new order
+                    execute(OrderType::BID, volumeAtBestBid); // execute all bids with the highest price
+                }
+                else // otherwise new order can be completely executed against bids with the highest price (so it won't be added to the book)
+                {
+                    execute(OrderType::BID, newOrder.m_volume); // execute the necessary volume
+                    return;
+                }
+            }
+
             // Create a new PriceLevel object
-            m_asks[intPrice] = PriceLevel { volume,
+            m_asks[intPrice] = PriceLevel { newOrder.m_volume,
                                             {std::move(newOrder)}
                                           };
             m_orderIterators[id] = m_asks[intPrice].m_orders.begin(); // create a reference (iterator) to the order
@@ -49,8 +66,25 @@ void OrderBook::add_order(OrderID id, double price, std::size_t volume, OrderTyp
         auto priceLvlIter = m_bids.find(intPrice); // search the order with the given price
         if (priceLvlIter == m_bids.end()) // if there is no order with that price in the map
         {
+            // Execute new order against existing asks with price <= new order price.
+            // Add any remaining volume to the order book after matching
+            while (!m_asks.empty() && price >= best_ask())
+            {
+                auto volumeAtBestAsk = volume_at_price(best_ask()); // take volume from the best ask price level
+                if (volumeAtBestAsk < newOrder.m_volume) // if new order cannot be completely executed against asks with the lowest price
+                {
+                    newOrder.m_volume -= volumeAtBestAsk; // decrease the volume of new order
+                    execute(OrderType::ASK, volumeAtBestAsk); // execute all asks with the lowest price
+                }
+                else // otherwise new order can be completely executed against asks with the lowest price (so it won't be added to the book)
+                {
+                    execute(OrderType::ASK, newOrder.m_volume); // execute the necessary volume
+                    return;
+                }
+            }
+
             // Create a new PriceLevel object
-            m_bids[intPrice] = PriceLevel { volume,
+            m_bids[intPrice] = PriceLevel { newOrder.m_volume,
                                             {std::move(newOrder)}
                                           };
             m_orderIterators[id] = m_bids[intPrice].m_orders.begin(); // create a reference (iterator) to the order
