@@ -42,6 +42,8 @@ private:
     std::map<Price, PriceLevel, std::greater<Price>> m_bids;
     std::map<Price, PriceLevel, std::less<Price>> m_asks;
     std::unordered_map<OrderID, OrderIter> m_orderIterators;
+    double m_marketPrice {-1.0}; // the default value means that there weren't
+                                 // any transactions yet
 
 // Methods
     Price double_to_price(double val) const noexcept;
@@ -76,6 +78,12 @@ public:
 
     // Get the best (highest) ask price
     double best_ask() const;
+
+    // Get the current spread
+    double spread() const noexcept;
+
+    // Get the current market price
+    double market_price() const noexcept;
 
     // Get the product volume at the given price
     std::size_t volume_at_price(double price) const;

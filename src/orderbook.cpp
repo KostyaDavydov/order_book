@@ -201,6 +201,8 @@ void OrderBook::execute_order(OrderID id, std::size_t execVolume)
             modify_order(id, price_to_double(orderToExec.m_price), orderToExec.m_volume - execVolume); // just change the volume
         else
             return; // not a valid value
+
+        m_marketPrice = price_to_double(orderToExec.m_price); // update the market price
     }
 }
 
@@ -298,6 +300,23 @@ double OrderBook::best_ask() const
         return 0.0;
     else
         return price_to_double(m_asks.begin()->first);
+}
+
+//=================================================
+
+double OrderBook::spread() const noexcept
+{
+    if (m_asks.empty() || m_bids.empty())
+        return -1.0; // the spread is undefined
+    else
+        return best_ask() - best_bid();
+}
+
+//=================================================
+
+double OrderBook::market_price() const noexcept
+{
+    return m_marketPrice;
 }
 
 //=================================================
