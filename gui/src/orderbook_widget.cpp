@@ -22,21 +22,17 @@ void TradingSimulationThread::finish_request()
 
 void TradingSimulationThread::run()
 {
-    // Codes of the actions over the order book
-    enum class Action {ADD = 0, DLT = 1, MDF = 2, EXEC = 3};
-
     // Each action as well as parameters for actions are generated randomly
     std::random_device rd;
     std::mt19937 gen(rd());
 
-    // ADD - 0; DELETE - 1; MODIFY - 2; EXECUTE - 3
-    std::uniform_int_distribution<> actionDist(0, 3);
+    std::poisson_distribution<> actionDist(4);
 
     // ASK - 0; BID - 1
     std::uniform_int_distribution<> typeDist(0, 1);
 
     // Order price and volume
-    std::uniform_real_distribution<> priceDist(1, 100);
+    std::normal_distribution<> priceDist(50.0, 7.0);
     std::uniform_int_distribution<> volumeDist(1, 10);
 
     for (OrderID currId = 0; currId < SIZE_MAX && m_finish == false;)
@@ -52,39 +48,32 @@ void TradingSimulationThread::run()
         else // subsequent iterations
         {
             // Generate the action to perform over the order book
-            auto action = static_cast<Action>(actionDist(gen));
+            auto action = actionDist(gen);
 
-            switch (action)
-            {
-            case Action::ADD:
+            if (action <= 4)
             {
                 m_book.add_order(currId++,
                                  priceDist(gen),
                                  volumeDist(gen),
                                  static_cast<OrderType>(typeDist(gen)));
-                break;
             }
-            case Action::DLT:
+            else if (action == 5)
             {
                 if (currId == 0) // no orders were added yet
                     continue;
                 std::uniform_int_distribution<> idDist(0, currId - 1);
                 m_book.delete_order(idDist(gen));
-                break;
             }
-            case Action::MDF:
+            else if (action == 6)
             {
                 if (currId == 0) // no orders were added yet
                     continue;
                 std::uniform_int_distribution<> idDist(0, currId - 1);
                 m_book.modify_order(idDist(gen), priceDist(gen), volumeDist(gen));
-                break;
             }
-            case Action::EXEC:
+            else
             {
                 m_book.execute(static_cast<OrderType>(typeDist(gen)), volumeDist(gen));
-                break;
-            }
             }
         }
 
@@ -95,7 +84,7 @@ void TradingSimulationThread::run()
                           m_book.spread());
 
         // Little delay before the next action
-        QThread::sleep(1);
+        QThread::msleep(500);
     }
 }
 
