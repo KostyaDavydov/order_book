@@ -64,6 +64,11 @@ private:
 // Thread for trading simulation process
     TradingSimulationThread * mp_tradingSimuThread;
 
+// Coordinates (for graphs rendering)
+    QVector<double>
+        m_askPrices, m_bidPrices,// X axis (prices)
+        m_askCumulVolumes, m_bidCumulVolumes; // Y axis (cumulative volumes)
+
     // Create, configure, and start the trading simulation thread
     void create_configure_start_thread();
 

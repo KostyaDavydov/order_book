@@ -142,6 +142,27 @@ OrderBookWidget::OrderBookWidget(QWidget * parent)
 
     mp_DOMCustomPlot = new QCustomPlot;
 
+    // Configure axes
+    mp_DOMCustomPlot->xAxis->setLabel("Price");
+    mp_DOMCustomPlot->yAxis->setLabel("Cumulative Volume");
+
+    // Add and configure graphs
+    mp_DOMCustomPlot->addGraph(); // Graph 0 (for bids)
+    mp_DOMCustomPlot->graph(0)->setPen(QPen(Qt::green, 2)); // Green line, thickness 2
+    mp_DOMCustomPlot->graph(0)->setBrush(QBrush(QColor(0, 255, 0, 100))); // Green fill with transparency
+    mp_DOMCustomPlot->graph(0)->setName("BIDS");
+
+    mp_DOMCustomPlot->addGraph(); // Graph 1 (for asks)
+    mp_DOMCustomPlot->graph(1)->setPen(QPen(Qt::red, 2)); // Red line, thickness 2
+    mp_DOMCustomPlot->graph(1)->setBrush(QBrush(QColor(255, 0, 0, 100))); // Red fill with transparency
+    mp_DOMCustomPlot->graph(1)->setName("ASKS");
+
+    mp_DOMCustomPlot->setBackground(QBrush(QColor("#ecf0f1")));
+
+    // Add legend to distinguish the graphs
+    mp_DOMCustomPlot->legend->setVisible(true);
+    mp_DOMCustomPlot->legend->setBrush(QBrush(QColor(255, 255, 255, 200))); // semi-transparent background
+
     // Set the splitter between the book and the DOM
 
     auto mainSplitter = new QSplitter;
@@ -215,21 +236,54 @@ void OrderBookWidget::update_book_presentation(const PriceLevelsVector & askLvls
                                                double marketPrice,
                                                double spread)
 {
-    // Fill the asks table
-    mp_asksTblWgt->setRowCount(askLvlsSnapshot.size());
-    for (auto i = 0; i < askLvlsSnapshot.size(); ++i)
+    int askLvlsCnt = askLvlsSnapshot.size();
+    int bidLvlsCnt = bidLvlsSnapshot.size();
+
+    // Set the appropriate sizes
+    m_askPrices.resize(askLvlsCnt);
+    m_bidPrices.resize(bidLvlsCnt);
+    m_askCumulVolumes.resize(askLvlsCnt);
+    m_bidCumulVolumes.resize(bidLvlsCnt);
+
+    // Fill the asks data
+    mp_asksTblWgt->setRowCount(askLvlsCnt);
+    for (auto i = 0; i < askLvlsCnt; ++i)
     {
-        mp_asksTblWgt->setItem(askLvlsSnapshot.size() - 1 - i, 0, new QTableWidgetItem(QString::number(askLvlsSnapshot[i].first)));
-        mp_asksTblWgt->setItem(askLvlsSnapshot.size() - 1 - i, 1, new QTableWidgetItem(QString::number(askLvlsSnapshot[i].second)));
+        // Table
+        mp_asksTblWgt->setItem(askLvlsCnt - i - 1, 0, new QTableWidgetItem(QString::number(askLvlsSnapshot[i].first)));
+        mp_asksTblWgt->setItem(askLvlsCnt - i - 1, 1, new QTableWidgetItem(QString::number(askLvlsSnapshot[i].second)));
+
+        // Graph
+
+        // X axis
+        m_askPrices[i] = askLvlsSnapshot[i].first;
+
+        // Y axis
+        if (i != 0)
+            m_askCumulVolumes[i] = m_askCumulVolumes[i - 1] + askLvlsSnapshot[i].second;
+        else
+            m_askCumulVolumes[i] = askLvlsSnapshot[i].second;
     }
     mp_asksTblWgt->scrollToBottom(); // asks with the lowest prices have to be seen when book updates
 
     // Fill the bids table
-    mp_bidsTblWgt->setRowCount(bidLvlsSnapshot.size());
-    for (auto i = 0; i < bidLvlsSnapshot.size(); ++i)
+    mp_bidsTblWgt->setRowCount(bidLvlsCnt);
+    for (auto i = 0; i < bidLvlsCnt; ++i)
     {
+        // Table
         mp_bidsTblWgt->setItem(i, 0, new QTableWidgetItem(QString::number(bidLvlsSnapshot[i].first)));
         mp_bidsTblWgt->setItem(i, 1, new QTableWidgetItem(QString::number(bidLvlsSnapshot[i].second)));
+
+        // Graph
+
+        // X axis
+        m_bidPrices[i] = bidLvlsSnapshot[bidLvlsCnt - i - 1].first;
+
+        // Y axis
+        if (i != 0)
+            m_bidCumulVolumes[bidLvlsCnt - i - 1] = m_bidCumulVolumes[bidLvlsCnt - i] + bidLvlsSnapshot[i].second;
+        else
+            m_bidCumulVolumes[bidLvlsCnt - i - 1] = bidLvlsSnapshot[i].second;
     }
     mp_bidsTblWgt->scrollToTop(); // bids with the highest prices have to be seen when book updates
 
@@ -244,6 +298,29 @@ void OrderBookWidget::update_book_presentation(const PriceLevelsVector & askLvls
         mp_spreadLbl->setText("Spread: ---");
     else
         mp_spreadLbl->setText("Spread: " + QString::number(spread));
+
+    // Set the fresh data
+    mp_DOMCustomPlot->graph(0)->setData(m_bidPrices, m_bidCumulVolumes, true); // green graph (BIDS)
+    mp_DOMCustomPlot->graph(1)->setData(m_askPrices, m_askCumulVolumes, true); // red graph (ASKS
+
+    if (askLvlsCnt != 0 && bidLvlsCnt != 0) // there are asks and bids in the book
+    {
+        mp_DOMCustomPlot->xAxis->setRange(m_bidPrices.front(), m_askPrices.back());
+        mp_DOMCustomPlot->yAxis->setRange(0, std::max(m_bidCumulVolumes.front(), m_askCumulVolumes.back()));
+    }
+    else if (askLvlsCnt != 0) // there are only asks in the book
+    {
+        mp_DOMCustomPlot->xAxis->setRange(m_askPrices.front(), m_askPrices.back());
+        mp_DOMCustomPlot->yAxis->setRange(0, m_askCumulVolumes.back());
+    }
+    else if (bidLvlsCnt != 0) // there are only bids in the book
+    {
+        mp_DOMCustomPlot->xAxis->setRange(m_bidPrices.front(), m_bidPrices.back());
+        mp_DOMCustomPlot->yAxis->setRange(0, m_bidCumulVolumes.front());
+    }
+
+    // Refresh the plot
+    mp_DOMCustomPlot->replot();
 
     this->repaint();
 }
