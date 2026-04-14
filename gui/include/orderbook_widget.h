@@ -75,6 +75,14 @@ private:
     // Apply styles to the interface elements
     void apply_styles();
 
+    // Update graphs according to the current data from the book
+    void update_graphs(int askLvlsCnt, int bidLvlsCnt);
+
+    // Initialization of the interface elements
+    void init_tables();
+    void init_custom_plot();
+    void init_menu();
+
 public:
     explicit OrderBookWidget(QWidget * parent = nullptr);
     ~OrderBookWidget();

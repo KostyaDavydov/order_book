@@ -99,21 +99,7 @@ OrderBookWidget::OrderBookWidget(QWidget * parent)
 
     // Configure interface for the order book
 
-    mp_asksTblWgt = new QTableWidget;
-    mp_asksTblWgt->setColumnCount(2);
-    mp_asksTblWgt->setHorizontalHeaderLabels({"Price", "Volume"});
-    mp_asksTblWgt->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    mp_asksTblWgt->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    mp_asksTblWgt->setStyleSheet("QTableWidget::item {background-color: rgba(255, 0, 0, 100);}");
-    mp_asksTblWgt->setEditTriggers(QAbstractItemView::NoEditTriggers);
-
-    mp_bidsTblWgt = new QTableWidget;
-    mp_bidsTblWgt->setColumnCount(2);
-    mp_bidsTblWgt->setHorizontalHeaderLabels({"Price", "Volume"});
-    mp_bidsTblWgt->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    mp_bidsTblWgt->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    mp_bidsTblWgt->setStyleSheet("QTableWidget::item {background-color: rgba(0, 255, 0, 100);}");
-    mp_bidsTblWgt->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    init_tables();
 
     mp_marketPriceLbl = new QLabel;
     mp_spreadLbl = new QLabel;
@@ -133,6 +119,65 @@ OrderBookWidget::OrderBookWidget(QWidget * parent)
 
     // Configure interface for the DOM (Depth of Market)
 
+    init_custom_plot();
+
+    // Set the splitter between the book and the DOM
+
+    auto mainSplitter = new QSplitter;
+    mainSplitter->addWidget(mp_DOMCustomPlot);
+    mainSplitter->addWidget(bookPartWgt);
+
+    // Register the complex type so that objects of that type are able
+    // to be transferred using the signal/slot mechanism
+    qRegisterMetaType<PriceLevelsVector>();
+
+    // Create and configure a menu bar
+
+    init_menu();
+
+    // Last display settings
+
+    setCentralWidget(mainSplitter);
+    setMinimumSize(300, 300);
+    resize(1000, 500);
+    mainSplitter->setSizes({500, 500});
+    apply_styles();
+}
+
+//=================================================
+
+OrderBookWidget::~OrderBookWidget()
+{
+    // Stop the simulation thread and wait until it completely terminates
+    emit finish_simulation();
+    mp_tradingSimuThread->wait();
+}
+
+//=================================================
+
+void OrderBookWidget::init_tables()
+{
+    mp_asksTblWgt = new QTableWidget;
+    mp_asksTblWgt->setColumnCount(2);
+    mp_asksTblWgt->setHorizontalHeaderLabels({"Price", "Volume"});
+    mp_asksTblWgt->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    mp_asksTblWgt->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    mp_asksTblWgt->setStyleSheet("QTableWidget::item {background-color: rgba(255, 0, 0, 100);}");
+    mp_asksTblWgt->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    mp_bidsTblWgt = new QTableWidget;
+    mp_bidsTblWgt->setColumnCount(2);
+    mp_bidsTblWgt->setHorizontalHeaderLabels({"Price", "Volume"});
+    mp_bidsTblWgt->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    mp_bidsTblWgt->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    mp_bidsTblWgt->setStyleSheet("QTableWidget::item {background-color: rgba(0, 255, 0, 100);}");
+    mp_bidsTblWgt->setEditTriggers(QAbstractItemView::NoEditTriggers);
+}
+
+//=================================================
+
+void OrderBookWidget::init_custom_plot()
+{
     mp_DOMCustomPlot = new QCustomPlot;
 
     // Configure axes
@@ -155,19 +200,12 @@ OrderBookWidget::OrderBookWidget(QWidget * parent)
     // Add legend to distinguish the graphs
     mp_DOMCustomPlot->legend->setVisible(true);
     mp_DOMCustomPlot->legend->setBrush(QBrush(QColor(255, 255, 255, 200))); // semi-transparent background
+}
 
-    // Set the splitter between the book and the DOM
+//=================================================
 
-    auto mainSplitter = new QSplitter;
-    mainSplitter->addWidget(mp_DOMCustomPlot);
-    mainSplitter->addWidget(bookPartWgt);
-
-    // Register the complex type so that objects of that type are able
-    // to be transferred using the signal/slot mechanism
-    qRegisterMetaType<PriceLevelsVector>();
-
-    // Create and configure a menu bar
-
+void OrderBookWidget::init_menu()
+{
     auto menuBar = new QMenuBar;
     setMenuBar(menuBar);
 
@@ -193,23 +231,6 @@ OrderBookWidget::OrderBookWidget(QWidget * parent)
 
     mp_startSimuAct->setEnabled(true);
     mp_stopSimuAct->setDisabled(true);
-
-    // Last display settings
-
-    setCentralWidget(mainSplitter);
-    setMinimumSize(300, 300);
-    resize(1000, 500);
-    mainSplitter->setSizes({500, 500});
-    apply_styles();
-}
-
-//=================================================
-
-OrderBookWidget::~OrderBookWidget()
-{
-    // Stop the simulation thread and wait until it completely terminates
-    emit finish_simulation();
-    mp_tradingSimuThread->wait();
 }
 
 //=================================================
@@ -323,7 +344,14 @@ void OrderBookWidget::update_book_presentation(const PriceLevelsVector & askLvls
     else
         mp_spreadLbl->setText("Spread: " + QString::number(spread));
 
-    // Set the fresh data
+    update_graphs(askLvlsCnt, bidLvlsCnt);
+    this->repaint();
+}
+
+//=================================================
+
+void OrderBookWidget::update_graphs(int askLvlsCnt, int bidLvlsCnt)
+{
     mp_DOMCustomPlot->graph(0)->setData(m_bidPrices, m_bidCumulVolumes, true); // green graph (BIDS)
     mp_DOMCustomPlot->graph(1)->setData(m_askPrices, m_askCumulVolumes, true); // red graph (ASKS
 
@@ -345,6 +373,4 @@ void OrderBookWidget::update_book_presentation(const PriceLevelsVector & askLvls
 
     // Refresh the plot
     mp_DOMCustomPlot->replot();
-
-    this->repaint();
 }
