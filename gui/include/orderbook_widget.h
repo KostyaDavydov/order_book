@@ -72,6 +72,9 @@ private:
     // Create, configure, and start the trading simulation thread
     void create_configure_start_thread();
 
+    // Apply styles to the interface elements
+    void apply_styles();
+
 public:
     explicit OrderBookWidget(QWidget * parent = nullptr);
     ~OrderBookWidget();

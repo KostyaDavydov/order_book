@@ -104,12 +104,16 @@ OrderBookWidget::OrderBookWidget(QWidget * parent)
     mp_asksTblWgt->setHorizontalHeaderLabels({"Price", "Volume"});
     mp_asksTblWgt->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     mp_asksTblWgt->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    mp_asksTblWgt->setStyleSheet("QTableWidget::item {background-color: rgba(255, 0, 0, 100);}");
+    mp_asksTblWgt->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     mp_bidsTblWgt = new QTableWidget;
     mp_bidsTblWgt->setColumnCount(2);
     mp_bidsTblWgt->setHorizontalHeaderLabels({"Price", "Volume"});
     mp_bidsTblWgt->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     mp_bidsTblWgt->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    mp_bidsTblWgt->setStyleSheet("QTableWidget::item {background-color: rgba(0, 255, 0, 100);}");
+    mp_bidsTblWgt->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     mp_marketPriceLbl = new QLabel;
     mp_spreadLbl = new QLabel;
@@ -196,6 +200,7 @@ OrderBookWidget::OrderBookWidget(QWidget * parent)
     setMinimumSize(300, 300);
     resize(1000, 500);
     mainSplitter->setSizes({500, 500});
+    apply_styles();
 }
 
 //=================================================
@@ -216,6 +221,36 @@ void OrderBookWidget::create_configure_start_thread()
     connect(mp_tradingSimuThread, &QThread::finished, mp_tradingSimuThread, &QObject::deleteLater);
     connect(mp_tradingSimuThread, &TradingSimulationThread::book_updated, this, &OrderBookWidget::update_book_presentation);
     mp_tradingSimuThread->start();
+}
+
+//=================================================
+
+void OrderBookWidget::apply_styles()
+{
+    QString styleSheet =
+        // Main window
+        "QMainWindow { background-color: #2c3e50; }"
+        "QWidget#centralWidget { background-color: #ecf0f1; }"
+
+        // Menu
+        "QMenuBar { background-color: #34495e; color: #ecf0f1; border-bottom: 1px solid #2c3e50; }"
+        "QMenuBar::item:selected { background-color: #2c3e50; }"
+        "QMenu { background-color: #34495e; color: #ecf0f1; border: 1px solid #2c3e50; }"
+        "QMenu::item:selected { background-color: #1abc9c; }"
+
+        // Labels
+        "QLabel { color: white; }"
+
+        // Tables
+        "QTableWidget { background-color: #ecf0f1; alternate-background-color: #f8f9fa; gridline-color: #dee2e6; selection-background-color: rgba(26, 188, 156, 150); selection-color: white; }"
+        "QHeaderView::section { background-color: #34495e; color: white; padding: 8px; border: 1px solid #2c3e50; font-weight: bold; }"
+
+        // Scrollbars
+        "QScrollBar:vertical { background-color: #ecf0f1; width: 12px; border-radius: 6px; }"
+        "QScrollBar::handle:vertical { background-color: #bdc3c7; border-radius: 6px; min-height: 20px; }"
+        "QScrollBar::handle:vertical:hover { background-color: #95a5a6; }";
+
+    this->setStyleSheet(styleSheet);
 }
 
 //=================================================
