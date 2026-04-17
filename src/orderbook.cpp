@@ -118,25 +118,27 @@ void OrderBook::delete_order(OrderID id)
         case OrderType::ASK:
         {
             Price currPrice = orderToDelete_ListIter->m_price;
-            auto & currPriceLevel = m_asks[currPrice];
+            auto currPriceLvlIter = m_asks.find(currPrice);
 
-            currPriceLevel.m_volume -= orderToDelete_ListIter->m_volume;
-            currPriceLevel.m_orders.erase(orderToDelete_ListIter);
+            currPriceLvlIter->second.m_volume -= orderToDelete_ListIter->m_volume;
+            currPriceLvlIter->second.m_orders.erase(orderToDelete_ListIter);
 
-            if (currPriceLevel.m_orders.empty())
-                m_asks.erase(currPrice);
+            if (currPriceLvlIter->second.m_orders.empty())
+                m_asks.erase(currPriceLvlIter);
+
             break;
         }
         case OrderType::BID:
         {
             Price currPrice = orderToDelete_ListIter->m_price;
-            auto & currPriceLevel = m_bids[currPrice];
+            auto currPriceLvlIter = m_bids.find(currPrice);
 
-            currPriceLevel.m_volume -= orderToDelete_ListIter->m_volume;
-            currPriceLevel.m_orders.erase(orderToDelete_ListIter);
+            currPriceLvlIter->second.m_volume -= orderToDelete_ListIter->m_volume;
+            currPriceLvlIter->second.m_orders.erase(orderToDelete_ListIter);
 
-            if (currPriceLevel.m_orders.empty())
-                m_bids.erase(currPrice);
+            if (currPriceLvlIter->second.m_orders.empty())
+                m_bids.erase(currPriceLvlIter);
+
             break;
         }
         }
